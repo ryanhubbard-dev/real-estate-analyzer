@@ -27,6 +27,7 @@ house1.price = 300000
 
 print("\nAFTER PRICE REDUCTION")
 print(f"Updated price per sqft: ${house1.price_per_sqft:.2f}\n")
+
 try:
     house3 = Property(
         address="Invalid Property",
@@ -35,4 +36,4 @@ try:
         sqft=0
     )
 except ValueError as error:
-    print(f"Invalid property data: {error}")
+    print(f"Validation successful: {error}")
