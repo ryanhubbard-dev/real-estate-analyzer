@@ -122,3 +122,4 @@ def test_invalid_waterfront(waterfront):
             bathrooms=2.5,
             waterfront=waterfront
         )
+
