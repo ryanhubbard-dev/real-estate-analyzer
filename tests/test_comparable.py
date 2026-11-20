@@ -5,6 +5,7 @@ from comparable import (
     sqft_similarity,
     bedroom_similarity,
     bathroom_similarity,
+    overall_similarity,
 )    
 from property import Property, WaterfrontType
 
@@ -189,3 +190,62 @@ def test_bathroom_similarity_missing(subject_bathrooms, candidate_bathrooms):
     )
 
     assert bathroom_similarity(subject, candidate) is None
+
+
+@pytest.mark.parametrize(
+    "subject_sqft, candidate_sqft, subject_bed, candidate_bed, subject_bath, candidate_bath, expected",
+    [
+        # Identical properties
+        (2000, 2000, 3, 3, 2.0, 2.0, 1.0),
+
+        # Square footage differences
+        (2000, 1800, 3, 3, 2.0, 2.0, 0.953846),
+        (1800, 2000, 3, 3, 2.0, 2.0, 0.953846),
+        (2000, 1000, 3, 3, 2.0, 2.0, 0.769231),
+
+        # Bedroom differences
+        (2000, 2000, 2, 3, 2.0, 2.0, 0.943878),
+        (2000, 2000, 3, 2, 2.0, 2.0, 0.943878),
+
+        # Bathroom differences
+        (2000, 2000, 3, 3, 1.0, 2.0, 0.930623),
+
+        # Missing square footage
+        (None, 2000, 3, 3, 2.0, 2.0, 1.0),
+
+        # Missing bathrooms
+        (2000, 2000, 3, 3, None, 2.0, 1.0),
+
+        # Only bedrooms available
+        (None, None, 2, 3, None, None, 0.817604),
+
+        # Zero-bedroom properties
+        (2000, 2000, 0, 0, 2.0, 2.0, 1.0),
+        (2000, 2000, 0, 1, 2.0, 2.0, 0.881714),
+    ],
+)
+def test_overall_similarity(
+    subject_sqft,
+    candidate_sqft,
+    subject_bed,
+    candidate_bed,
+    subject_bath,
+    candidate_bath,
+    expected,
+):
+    subject = Property(
+        address="Subject House",
+        price=450000,
+        bedrooms=subject_bed,
+        sqft=subject_sqft,
+        bathrooms=subject_bath,
+    )
+    candidate = Property(
+        address="Candidate House",
+        price=450000,
+        bedrooms=candidate_bed,
+        sqft=candidate_sqft,
+        bathrooms=candidate_bath,
+    )
+
+    assert overall_similarity(subject, candidate) == pytest.approx(expected, abs=0.000001)
