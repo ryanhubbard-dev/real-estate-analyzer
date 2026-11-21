@@ -37,7 +37,8 @@ def test_select_comps_filtering(status, waterfront, expected_count):
 
     results = select_comps(subject, [candidate])
 
-    assert len(results) == expected_count
+    assert results.primary_count == expected_count
+    assert results.secondary_count == 0
 
 
 def test_select_comps_empty():
@@ -49,7 +50,12 @@ def test_select_comps_empty():
         waterfront=WaterfrontType.INLAND,
     )
 
-    assert select_comps(subject, []) == []
+    results = select_comps(subject, [])
+
+    assert results.primary == []
+    assert results.secondary == []
+    assert results.primary_count == 0
+    assert results.secondary_count == 0
 
 
 def test_select_comps_excludes_subject():
@@ -62,7 +68,10 @@ def test_select_comps_excludes_subject():
         waterfront=WaterfrontType.INLAND,
     )
 
-    assert select_comps(subject, [subject]) == []
+    results = select_comps(subject, [subject])
+
+    assert results.primary_count == 0
+    assert results.secondary_count == 0
 
 
 def test_select_comps_ranking():
@@ -84,13 +93,14 @@ def test_select_comps_ranking():
 
     results = select_comps(subject, candidates)
 
-    assert [comp.property.address for comp in results] == [
+    assert [comp.property.address for comp in results.primary] == [
         "Best Match", "Good Match", "Fair Match", "Poor Match"
     ]
-    assert results[0].similarity == pytest.approx(1.0)
-    assert results[1].similarity == pytest.approx(0.953846)
-    assert results[2].similarity == pytest.approx(0.884615)
-    assert results[3].similarity == pytest.approx(0.769231)
+
+    assert results.primary[0].similarity == pytest.approx(1.0)
+    assert results.primary[1].similarity == pytest.approx(0.953846)
+    assert results.primary[2].similarity == pytest.approx(0.884615)
+    assert results.primary[3].similarity == pytest.approx(0.769231)
 
 
 def test_select_comps_ties():
@@ -100,9 +110,9 @@ def test_select_comps_ties():
 
     results = select_comps(subject, [candidate1, candidate2])
 
-    assert len(results) == 2
-    assert [comp.property.address for comp in results] == ["Comp A", "Comp B"]
-    assert all(comp.similarity == pytest.approx(1.0) for comp in results)
+    assert results.primary_count == 2
+    assert [comp.property.address for comp in results.primary] == ["Comp A", "Comp B"]
+    assert all(comp.similarity == pytest.approx(1.0) for comp in results.primary)
 
 
 def test_select_comps_missing_data():
@@ -111,8 +121,9 @@ def test_select_comps_missing_data():
 
     results = select_comps(subject, [candidate])
 
-    assert len(results) == 1
-    assert results[0].similarity == pytest.approx((3 / 4) ** 0.7)
+    # Only bedrooms overlap, giving 30.77% coverage.
+    assert results.primary_count == 0
+    assert results.secondary_count == 0
 
 
 @pytest.mark.parametrize("limit, expected_count", [(5, 5), (3, 3), (1, 1)])
@@ -126,8 +137,62 @@ def test_select_comps_limit(limit, expected_count):
 
     results = select_comps(subject, candidates, limit=limit)
 
-    assert len(results) == expected_count
-    assert results[0].property.sqft == 2000
-    assert [comp.property.sqft for comp in results] == [2000, 1800, 1600, 1400, 1200][:limit]
+    assert len(results.primary) == expected_count
+    assert results.primary_count == 6
+    assert len(results.all_primary) == 6
+    assert results.primary[0].property.sqft == 2000
+    assert [comp.property.sqft for comp in results.primary] == [
+        2000, 1800, 1600, 1400, 1200
+    ][:limit]
 
 
+def test_select_comps_separates_primary_and_secondary():
+    subject = Property(
+        "Subject", 400000, 2000, 3, 2.0,
+        waterfront=WaterfrontType.INLAND,
+    )
+
+    primary = Property(
+        "Primary", 350000, 1900, 3, 2.0,
+        status=ListingStatus.SOLD,
+        waterfront=WaterfrontType.INLAND,
+    )
+
+    secondary = Property(
+        "Secondary", 330000, 1900, 3, None,
+        status=ListingStatus.SOLD,
+        waterfront=WaterfrontType.INLAND,
+    )
+
+    results = select_comps(subject, [primary, secondary])
+
+    assert results.primary_count == 1
+    assert results.secondary_count == 1
+    assert results.primary[0].property is primary
+    assert results.secondary[0].property is secondary
+
+
+def test_select_comps_preserves_all_qualifying_results():
+    subject = Property(
+        "Subject", 400000, 2000, 3, 2.0,
+        waterfront=WaterfrontType.INLAND,
+    )
+
+    candidates = [
+        Property(
+            f"Comp {i}", 350000, 2000 + i * 50, 3, 2.0,
+            status=ListingStatus.SOLD,
+            waterfront=WaterfrontType.INLAND,
+        )
+        for i in range(8)
+    ]
+
+    results = select_comps(subject, candidates)
+
+    assert results.primary_count == 8
+    assert len(results.primary) == 5
+    assert len(results.all_primary) == 8
+    assert results.secondary_count == 0
+
+    similarities = [comp.similarity for comp in results.all_primary]
+    assert similarities == sorted(similarities, reverse=True)

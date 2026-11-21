@@ -47,6 +47,21 @@ def data_completeness(property: Property) -> float:
     return available_weight / TOTAL_WEIGHT
 
 
+def comparison_coverage(subject: Property, candidate: Property) -> float:
+    available_weight = 0.0
+
+    if subject.sqft is not None and candidate.sqft is not None:
+        available_weight += SQFT_WEIGHT
+
+    if subject.bedrooms is not None and candidate.bedrooms is not None:
+        available_weight += BEDROOM_WEIGHT
+
+    if subject.bathrooms is not None and candidate.bathrooms is not None:
+        available_weight += BATHROOM_WEIGHT
+
+    return available_weight / TOTAL_WEIGHT
+
+
 def are_comparable(subject: Property, candidate: Property) -> bool:
     if WaterfrontType.UNKNOWN in (subject.waterfront, candidate.waterfront):
         return False

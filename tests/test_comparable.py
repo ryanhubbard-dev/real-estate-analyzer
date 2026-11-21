@@ -4,10 +4,11 @@ from comparable import (
     are_comparable,
     bathroom_similarity,
     bedroom_similarity,
+    comparison_coverage,
     data_completeness,
     overall_similarity,
     sqft_similarity,
-)    
+)
 from property import Property, WaterfrontType
 
 
@@ -275,3 +276,52 @@ def test_data_completeness(sqft, bedrooms, bathrooms, expected):
     )
 
     assert data_completeness(house) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "subject_data, candidate_data, expected",
+    [
+        # Both properties have complete information
+        ((2000, 3, 2.0), (1800, 4, 2.5), 1.0),
+
+        # Subject missing bathrooms
+        ((2000, 3, None), (1800, 4, 2.5), 0.50 / 0.65),
+
+        # Only bedrooms overlap
+        ((2000, 3, None), (None, 4, 2.5), 0.20 / 0.65),
+
+        # Both properties missing square footage
+        ((None, 3, 2.0), (None, 4, 2.5), 0.35 / 0.65),
+
+        # No overlapping information
+        ((2000, None, None), (None, 3, None), 0.0),
+
+        # Subject has no available information
+        ((None, None, None), (1800, 4, 2.5), 0.0),
+
+        # Candidate has no available information
+        ((2000, 3, 2.0), (None, None, None), 0.0),
+
+        # Both properties missing everything
+        ((None, None, None), (None, None, None), 0.0),
+
+        # Zero bedrooms and bathrooms are valid data
+        ((2000, 0, 0.0), (1800, 3, 2.0), 1.0),
+    ],
+)
+def test_comparison_coverage(subject_data, candidate_data, expected):
+    subject = Property("Subject", 400000, *subject_data)
+    candidate = Property("Candidate", 350000, *candidate_data)
+
+    assert comparison_coverage(subject, candidate) == pytest.approx(expected)
+
+    # Coverage must never exceed either property's completeness.
+    assert comparison_coverage(subject, candidate) <= min(
+        data_completeness(subject), data_completeness(candidate)
+    ) + 1e-9
+
+    # Reversing the properties must not change coverage.
+    assert comparison_coverage(subject, candidate) == pytest.approx(
+        comparison_coverage(candidate, subject)
+    )
+
