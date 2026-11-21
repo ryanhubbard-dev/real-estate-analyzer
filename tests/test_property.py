@@ -19,6 +19,7 @@ def test_missing_sqft():
     house = Property(
         address="Example House",
         price=300000,
+        sqft=None,
         bedrooms=4,
         bathrooms=2.5
     )

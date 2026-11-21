@@ -2,10 +2,11 @@ import pytest
 
 from comparable import (
     are_comparable,
-    sqft_similarity,
-    bedroom_similarity,
     bathroom_similarity,
+    bedroom_similarity,
+    data_completeness,
     overall_similarity,
+    sqft_similarity,
 )    
 from property import Property, WaterfrontType
 
@@ -249,3 +250,28 @@ def test_overall_similarity(
     )
 
     assert overall_similarity(subject, candidate) == pytest.approx(expected, abs=0.000001)
+
+
+@pytest.mark.parametrize(
+    "sqft, bedrooms, bathrooms, expected",
+    [
+        (2000, 3, 2.0, 1.0),
+        (2000, 3, None, 0.50 / 0.65),
+        (2000, None, 2.0, 0.45 / 0.65),
+        (None, 3, 2.0, 0.35 / 0.65),
+        (2000, None, None, 0.30 / 0.65),
+        (None, 3, None, 0.20 / 0.65),
+        (None, None, 2.0, 0.15 / 0.65),
+        (None, None, None, 0.0),
+    ],
+)
+def test_data_completeness(sqft, bedrooms, bathrooms, expected):
+    house = Property(
+        address="Test House",
+        price=350000,
+        sqft=sqft,
+        bedrooms=bedrooms,
+        bathrooms=bathrooms,
+    )
+
+    assert data_completeness(house) == pytest.approx(expected)

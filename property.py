@@ -18,8 +18,8 @@ class WaterfrontType(Enum):
 class Property:
     address: str
     price: int
-    bedrooms: int
-    sqft: int | None = None
+    sqft: int | None
+    bedrooms: int | None
     bathrooms: float | None = None
     status: ListingStatus = ListingStatus.ACTIVE
     waterfront: WaterfrontType = WaterfrontType.UNKNOWN
@@ -31,7 +31,7 @@ class Property:
         if self.sqft is not None and self.sqft <= 0:
             raise ValueError("Square footage must be greater than zero.")
 
-        if self.bedrooms < 0:
+        if self.bedrooms is not None and self.bedrooms < 0:
             raise ValueError("Bedrooms cannot be negative.")
 
         if self.bathrooms is not None and self.bathrooms < 0:
